@@ -1,48 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-    <meta charset="utf-8">
-    <title>唐橋・竜神召喚AR</title>
+    <meta charset="UTF-8">
+    <title>竜神召喚テスト</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        #ar-overlay {
-            position: fixed; bottom: 20px; left: 50%;
-            transform: translateX(-50%); z-index: 10;
-        }
-        button {
-            padding: 15px 30px; font-size: 18px; font-weight: bold;
-            background: #007bff; color: white; border: none; border-radius: 50px;
-        }
-        /* 画像を画面の中央に配置（AR起動前） */
-        .preview {
-            width: 100%; height: 80vh; 
-            display: flex; align-items: center; justify-content: center;
-        }
-        .preview img { max-width: 80%; max-height: 80%; }
-    </style>
 </head>
 <body>
+    <h1>竜神召喚テスト</h1>
+    
+    <img src="1000003260.png" width="200"><br><br>
 
-    <div class="preview">
-        <img src="1000003260.png" alt="竜のプレビュー">
-    </div>
+    <a href="intent://arvr.google.com/scene-viewer/1.0?file=https://9648-ai.github.io/1000003260.png&mode=ar_only#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;">
+        <button style="padding: 20px; font-size: 20px;">
+            ここをタップしてAR起動
+        </button>
+    </a>
 
-    <div id="ar-overlay">
-        <a id="ar-link" rel="ar" href="1000003260.png">
-            <button>🐲 竜神を召喚する</button>
-        </a>
-    </div>
-
-    <script>
-        // Androidの場合は、特定の形式のURLにする必要があるため自動調整します
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        if (isAndroid) {
-            const imgUrl = window.location.href.replace('index.html', '') + '1000003260.png';
-            const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${imgUrl}&mode=ar_only#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;`;
-            document.getElementById('ar-link').href = intent;
-        }
-    </script>
-
+    <p>※Chromeブラウザで開いてください</p>
 </body>
 </html>
