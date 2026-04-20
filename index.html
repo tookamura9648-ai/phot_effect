@@ -1,56 +1,55 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>唐橋・竜神召喚AR</title>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <meta charset="utf-8">
+    <title>自由画像ARプラットフォーム</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
-        body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #222; }
-        model-viewer { width: 100%; height: 90%; background-color: #333; }
-        .ar-button {
-            background-color: #007bff; color: white; border: none;
-            border-radius: 50px; padding: 16px 32px;
-            font-size: 20px; font-weight: bold; cursor: pointer;
-            position: fixed; bottom: 40px; z-index: 100;
+        #ui {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: rgba(255,255,255,0.8); padding: 15px;
+            border-radius: 10px; text-align: center; width: 80%;
         }
+        input[type="file"] { margin-bottom: 10px; }
     </style>
 </head>
-<body>
+<body style="margin: 0; overflow: hidden;">
 
-    <model-viewer 
-        src=""
-        ar 
-        ar-modes="scene-viewer quick-look" 
-        camera-controls 
-        alt="琵琶湖の竜神"
-        poster="1000003260.png">
+    <div id="ui">
+        <p style="margin:0 0 10px 0; font-size: 14px; font-weight: bold;">Step 1: 画像を選択してください</p>
+        <input type="file" id="imageSelector" accept="image/*">
+        <p style="margin:5px 0 0 0; font-size: 12px; color: #666;">※画像を選んだら、カメラを床や平らな場所に向けてください</p>
+    </div>
+
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+        <a-image id="arImage" position="0 1.5 -2" scale="1 1 1" visible="false"></a-image>
         
-        <button slot="ar-button" class="ar-button">
-            🐲 竜神を召喚する
-        </button>
-
-    </model-viewer>
+        <a-entity camera></a-entity>
+    </a-scene>
 
     <script>
-        // ボタンを押した時に、AndroidのAR機能を直接呼び出すスクリプト
-        const modelViewer = document.querySelector('model-viewer');
-        const imgName = '1000003260.png'; // あなたの画像ファイル名
-        
-        // ページのURLを取得
-        const url = window.location.href.replace('index.html', '') + imgName;
+        const input = document.getElementById('imageSelector');
+        const arImage = document.getElementById('arImage');
 
-        // Android用：Scene Viewerを画像モードで起動する設定
-        const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${url}&mode=ar_only#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;`;
-
-        modelViewer.addEventListener('click', (e) => {
-            if (modelViewer.canActivateAR) {
-                // 標準機能で動く場合はそのまま
-            } else {
-                // 動かない場合は直接Intentを発行（Android用）
-                if (/Android/i.test(navigator.userAgent)) {
-                    window.location.href = intent;
-                }
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    // 画像のURLを設定して表示
+                    arImage.setAttribute('src', event.target.result);
+                    arImage.setAttribute('visible', true);
+                    
+                    // アスペクト比を自動調整（画像が伸びないようにする）
+                    const img = new Image();
+                    img.onload = function() {
+                        const aspect = this.width / this.height;
+                        arImage.setAttribute('scale', `${aspect} 1 1`);
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             }
         });
     </script>
