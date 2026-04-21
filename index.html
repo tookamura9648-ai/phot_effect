@@ -2,62 +2,89 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>自由画像ARプラットフォーム</title>
+    <title>AR画像召喚プラットフォーム</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
         #ui {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: rgba(255,255,255,0.8); padding: 15px;
-            border-radius: 10px; text-align: center; width: 80%;
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: rgba(255, 255, 255, 0.9); padding: 20px;
+            border-radius: 15px; text-align: center; width: 85%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        input[type="file"] { margin-bottom: 10px; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        input[type="file"] { font-size: 14px; }
     </style>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
     <div id="ui">
-        <p style="margin:0 0 10px 0; font-size: 14px; font-weight: bold;">Step 1: 画像を選択してください</p>
-        <input type="file" id="imageSelector" accept="image/*">
-        <p style="margin:5px 0 0 0; font-size: 12px; color: #666;">※画像を選んだら、カメラを床や平らな場所に向けてください</p>
+        <div class="control-group">
+            <label>1. 画像を選んで召喚</label>
+            <input type="file" id="imageSelector" accept="image/*">
+        </div>
+        
+        <div class="control-group">
+            <label>2. サイズを自由に変える</label>
+            <input type="range" id="sizeSlider" min="0.1" max="3.0" step="0.1" value="0.8">
+        </div>
+        <p style="margin:0; font-size: 11px; color: #888;">スマホを正面に構えて探してください</p>
     </div>
-    
-<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-    
-    <a-assets id="assets"></a-assets>
-    <a-image id="arImage" position="0 0 -1" scale="0.5 0.5 0.5" visible="false"></a-image>
 
-    <a-entity camera>
-        <a-image id="arImage" position="0 0 -1" visible="false"></a-image>
-    </a-entity>
-    
-</a-scene>
-
+    <a-scene 
+        embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false;" 
+        vr-mode-ui="enabled: false">
+        
+        <a-assets id="assets"></a-assets>
+        
+        <a-entity camera>
+            <a-image id="arImage" position="0 0 -1.5" visible="false"></a-image>
+        </a-entity>
+        
+    </a-scene>
 
     <script>
         const input = document.getElementById('imageSelector');
         const arImage = document.getElementById('arImage');
+        const sizeSlider = document.getElementById('sizeSlider');
 
+        let currentAspect = 1.0;
+
+        // 画像が選択された時の処理
         input.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    // 画像のURLを設定して表示
+                    // 画像をAR空間にセット
                     arImage.setAttribute('src', event.target.result);
                     arImage.setAttribute('visible', true);
                     
-                    // アスペクト比を自動調整（画像が伸びないようにする）
+                    // 画像の縦横比を取得してサイズを自動調整
                     const img = new Image();
                     img.onload = function() {
-                        const aspect = this.width / this.height;
-                        arImage.setAttribute('scale', `${aspect} 1 1`);
+                        currentAspect = this.width / this.height;
+                        updateScale();
                     };
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
             }
         });
+
+        // スライダーを動かした時にリアルタイムでサイズ変更
+        sizeSlider.addEventListener('input', updateScale);
+
+        function updateScale() {
+            const baseSize = parseFloat(sizeSlider.value);
+            // 横幅 = アスペクト比 × 基準サイズ、高さ = 基準サイズ
+            arImage.setAttribute('scale', `${currentAspect * baseSize} ${baseSize} 1`);
+        }
     </script>
 </body>
 </html>
+
