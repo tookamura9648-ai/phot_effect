@@ -21,13 +21,15 @@
         <input type="file" id="imageSelector" accept="image/*">
         <p style="margin:5px 0 0 0; font-size: 12px; color: #666;">※画像を選んだら、カメラを床や平らな場所に向けてください</p>
     </div>
-<a-scene 
-    embedded 
-    arjs="sourceType: webcam; debugUIEnabled: false;" 
-    vr-mode-ui="enabled: false">
     
-    <a-image id="arImage" position="0 1.5 -2" scale="1 1 1" visible="false"></a-image>
-    <a-entity camera></a-entity>
+<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+    
+    <a-assets id="assets"></a-assets>
+    
+    <a-entity camera>
+        <a-image id="arImage" position="0 0 -1" visible="false"></a-image>
+    </a-entity>
+    
 </a-scene>
 
 
