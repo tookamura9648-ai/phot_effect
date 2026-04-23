@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR画像召喚プラットフォーム</title>
+    <title>AR画像・3D召喚プラットフォーム</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -23,8 +23,8 @@
 
     <div id="ui">
         <div class="control-group">
-            <label>1. 画像を選んで召喚</label>
-            <input type="file" id="imageSelector" accept="image/*">
+            <label>1. 画像または3Dモデル(.glb)を選択</label>
+            <input type="file" id="imageSelector" accept="image/*,.glb">
         </div>
         
         <div class="control-group">
@@ -49,108 +49,74 @@
     </a-scene>
 
     <script>
-        const input = document.getElementById('imageSelector');
-        const arImage = document.getElementById('arImage');
-        const sizeSlider = document.getElementById('sizeSlider');
+        // すべての命令をひとつにまとめました
+        (function() {
+            const fileInput = document.getElementById('imageSelector');
+            const arImage = document.getElementById('arImage');
+            const arModel = document.getElementById('arModel');
+            const arShadow = document.getElementById('arShadow');
+            const sizeSlider = document.getElementById('sizeSlider');
 
-        let currentAspect = 1.0;
+            let currentAspect = 1.0;
+            let is3D = false;
 
-        // 画像が選択された時の処理
-        input.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
+            // ファイルが選択された時の処理
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const fileName = file.name.toLowerCase();
                 const reader = new FileReader();
+
                 reader.onload = (event) => {
-                    // 画像をAR空間にセット
-                    arImage.setAttribute('src', event.target.result);
-                    arImage.setAttribute('visible', true);
-                    
-                    // 画像の縦横比を取得してサイズを自動調整
-                    const img = new Image();
-                    img.onload = function() {
-                        currentAspect = this.width / this.height;
-                        updateScale();
-                    };
-                    img.src = event.target.result;
+                    const dataUrl = event.target.result;
+
+                    // 拡張子で3D(.glb)か画像かを自動判別
+                    if (fileName.endsWith('.glb')) {
+                        is3D = true;
+                        arImage.setAttribute('visible', false);
+                        arModel.setAttribute('gltf-model', dataUrl);
+                        arModel.setAttribute('visible', true);
+                        currentAspect = 1.0; 
+                    } else {
+                        is3D = false;
+                        arModel.setAttribute('visible', false);
+                        arImage.setAttribute('src', dataUrl);
+                        arImage.setAttribute('visible', true);
+                        
+                        const img = new Image();
+                        img.onload = function() {
+                            currentAspect = this.width / this.height;
+                            updateScale(); // 縦横比が確定してからサイズ更新
+                        };
+                        img.src = dataUrl;
+                    }
+                    arShadow.setAttribute('visible', true);
+                    updateScale();
                 };
                 reader.readAsDataURL(file);
-            }
-        });
+            });
 
-        // スライダーを動かした時にリアルタイムでサイズ変更
-        sizeSlider.addEventListener('input', updateScale);
+            // スライダーを動かした時の処理
+            sizeSlider.addEventListener('input', updateScale);
 
-        function updateScale() {
-            const baseSize = parseFloat(sizeSlider.value);
-            // 龍のサイズ更新
-            arImage.setAttribute('scale', `${currentAspect * baseSize} ${baseSize} 1`);
-            
-            // 影のサイズ更新（龍の横幅に合わせて調整）
-            const shadowSize = baseSize * 1.2; 
-            const arShadow = document.getElementById('arShadow');
-            arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
-            arShadow.setAttribute('visible', arImage.getAttribute('visible'));
-        }
-    </script>
-    <script>
-        const input = document.getElementById('imageSelector');
-        const arImage = document.getElementById('arImage');
-        const arModel = document.getElementById('arModel');
-        const arShadow = document.getElementById('arShadow');
-        const sizeSlider = document.getElementById('sizeSlider');
-    
-        let currentAspect = 1.0;
-        let is3D = false;
-    
-        input.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-    
-            const fileName = file.name.toLowerCase();
-            const reader = new FileReader();
-    
-            reader.onload = (event) => {
-                const dataUrl = event.target.result;
-    
-                // ★拡張子で自動判別
-                if (fileName.endsWith('.glb')) {
-                    is3D = true;
-                    arImage.setAttribute('visible', false);
-                    arModel.setAttribute('gltf-model', dataUrl);
-                    arModel.setAttribute('visible', true);
-                    currentAspect = 1.0; // 3Dはアスペクト比固定
+            // サイズ更新関数
+            function updateScale() {
+                const baseSize = parseFloat(sizeSlider.value);
+                
+                if (is3D) {
+                    // 3Dモデルは縦横奥行すべて同じ倍率
+                    arModel.setAttribute('scale', `${baseSize} ${baseSize} ${baseSize}`);
                 } else {
-                    is3D = false;
-                    arModel.setAttribute('visible', false);
-                    arImage.setAttribute('src', dataUrl);
-                    arImage.setAttribute('visible', true);
-                    
-                    const img = new Image();
-                    img.onload = function() {
-                        currentAspect = this.width / this.height;
-                        updateScale();
-                    };
-                    img.src = dataUrl;
+                    // 画像はアスペクト比を維持
+                    arImage.setAttribute('scale', `${currentAspect * baseSize} ${baseSize} 1`);
                 }
-                arShadow.setAttribute('visible', true);
-                updateScale();
-            };
-            reader.readAsDataURL(file);
-        });
-    
-        sizeSlider.addEventListener('input', updateScale);
-    
-        function updateScale() {
-            const baseSize = parseFloat(sizeSlider.value);
-            if (is3D) {
-                arModel.setAttribute('scale', `${baseSize} ${baseSize} ${baseSize}`);
-            } else {
-                arImage.setAttribute('scale', `${currentAspect * baseSize} ${baseSize} 1`);
+                
+                // 影のサイズも本体に合わせて調整（0.8倍くらいが自然）
+                const shadowSize = baseSize * 0.8;
+                arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
             }
-            // 影もサイズに連動
-            const shadowSize = baseSize * 0.8;
-            arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
-        }
+        })();
     </script>
 </body>
 </html>
