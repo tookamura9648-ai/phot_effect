@@ -42,12 +42,14 @@
         <a-assets id="assets"></a-assets>
         
         <a-entity camera>
+            <a-image id="arImage" position="0 0 -1.5" visible="false"></a-image>
+        
             <a-circle id="arShadow" 
-              position="0 -0.6 -1.5" 
-              rotation="-90 0 0" 
-              radius="0.5" 
-              material="shader: flat; color: black; transparent: true; opacity: 0.4; blending: multiply;" 
-              visible="false">
+                      position="0 -0.6 -1.5" 
+                      rotation="-90 0 0" 
+                      radius="0.5" 
+                      material="shader: flat; color: black; transparent: true; opacity: 0.4; blending: multiply;" 
+                      visible="false">
             </a-circle>
         </a-entity>
         
