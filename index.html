@@ -34,25 +34,18 @@
         <p style="margin:0; font-size: 11px; color: #888;">スマホを正面に構えて探してください</p>
     </div>
 
-    <a-scene 
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false;" 
-        vr-mode-ui="enabled: false">
-        
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
         <a-assets id="assets"></a-assets>
         
         <a-entity camera>
             <a-image id="arImage" position="0 0 -1.5" visible="false"></a-image>
-        
-            <a-circle id="arShadow" 
-                      position="0 -0.6 -1.5" 
-                      rotation="-90 0 0" 
-                      radius="0.5" 
-                      material="shader: flat; color: black; transparent: true; opacity: 0.4; blending: multiply;" 
-                      visible="false">
+            
+            <a-entity id="arModel" position="0 -0.3 -1.5" scale="0.5 0.5 0.5" gltf-model="" visible="false"></a-entity>
+            
+            <a-circle id="arShadow" position="0 -0.6 -1.5" rotation="-90 0 0" radius="0.5" 
+                      material="shader: flat; color: black; transparent: true; opacity: 0.4; blending: multiply;" visible="false">
             </a-circle>
         </a-entity>
-        
     </a-scene>
 
     <script>
@@ -97,6 +90,66 @@
             const arShadow = document.getElementById('arShadow');
             arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
             arShadow.setAttribute('visible', arImage.getAttribute('visible'));
+        }
+    </script>
+    <script>
+        const input = document.getElementById('imageSelector');
+        const arImage = document.getElementById('arImage');
+        const arModel = document.getElementById('arModel');
+        const arShadow = document.getElementById('arShadow');
+        const sizeSlider = document.getElementById('sizeSlider');
+    
+        let currentAspect = 1.0;
+        let is3D = false;
+    
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+    
+            const fileName = file.name.toLowerCase();
+            const reader = new FileReader();
+    
+            reader.onload = (event) => {
+                const dataUrl = event.target.result;
+    
+                // ★拡張子で自動判別
+                if (fileName.endsWith('.glb')) {
+                    is3D = true;
+                    arImage.setAttribute('visible', false);
+                    arModel.setAttribute('gltf-model', dataUrl);
+                    arModel.setAttribute('visible', true);
+                    currentAspect = 1.0; // 3Dはアスペクト比固定
+                } else {
+                    is3D = false;
+                    arModel.setAttribute('visible', false);
+                    arImage.setAttribute('src', dataUrl);
+                    arImage.setAttribute('visible', true);
+                    
+                    const img = new Image();
+                    img.onload = function() {
+                        currentAspect = this.width / this.height;
+                        updateScale();
+                    };
+                    img.src = dataUrl;
+                }
+                arShadow.setAttribute('visible', true);
+                updateScale();
+            };
+            reader.readAsDataURL(file);
+        });
+    
+        sizeSlider.addEventListener('input', updateScale);
+    
+        function updateScale() {
+            const baseSize = parseFloat(sizeSlider.value);
+            if (is3D) {
+                arModel.setAttribute('scale', `${baseSize} ${baseSize} ${baseSize}`);
+            } else {
+                arImage.setAttribute('scale', `${currentAspect * baseSize} ${baseSize} 1`);
+            }
+            // 影もサイズに連動
+            const shadowSize = baseSize * 0.8;
+            arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
         }
     </script>
 </body>
