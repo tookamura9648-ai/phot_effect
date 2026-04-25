@@ -2,59 +2,61 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR手のひら召喚ツール</title>
+    <title>AR撮影・手のひら召喚ツール</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        
+        /* 操作パネル */
         #ui {
-            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 12px;
-            border-radius: 15px; text-align: center; width: 92%;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 15px;
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            width: 90%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease-out; /* スライドのアニメーション */
         }
+        /* パネルが隠れている時の状態 */
+        #ui.hidden { transform: translateX(-50%) translateY(90%); }
+
         .control-group { margin-bottom: 8px; }
         label { display: block; font-size: 10px; color: #444; margin-bottom: 2px; font-weight: bold; }
         input[type="range"] { width: 100%; cursor: pointer; height: 20px; }
-        .slider-label { display: flex; justify-content: space-between; align-items: center; }
+
+        /* ボタン類 */
+        .btn-container { display: flex; justify-content: space-around; margin-top: 10px; gap: 10px; }
+        button {
+            padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; flex: 1;
+        }
+        #shutterBtn { background: #ff4757; color: white; } /* 撮影ボタン */
+        #toggleBtn { background: #2f3542; color: white; }  /* 格納ボタン */
     </style>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
     <div id="ui">
+        <div style="text-align: right;">
+            <button id="toggleBtn" style="width: auto; padding: 5px 15px; font-size: 10px;">パネルを隠す / 出す</button>
+        </div>
+
         <div class="control-group">
             <input type="file" id="imageSelector" accept="image/*,.glb" style="font-size: 11px;">
         </div>
         
-        <div class="control-group">
-            <label>大きさ</label>
-            <input type="range" id="sizeSlider" min="0.05" max="3.0" step="0.05" value="0.5">
-        </div>
-
-        <div class="control-group">
-            <label>左右 (横に動かす)</label>
-            <input type="range" id="posXSlider" min="-2.0" max="2.0" step="0.05" value="0">
-        </div>
-
-        <div class="control-group">
-            <label>上下 (高さ調整)</label>
-            <input type="range" id="posYSlider" min="-2.0" max="2.0" step="0.05" value="0">
-        </div>
-
-        <div class="control-group">
-            <label>遠近 (奥行き)</label>
-            <input type="range" id="posZSlider" min="-5.0" max="-0.3" step="0.05" value="-1.0">
-        </div>
+        <div class="control-group"><label>大きさ</label><input type="range" id="sizeSlider" min="0.05" max="3.0" step="0.05" value="0.5"></div>
+        <div class="control-group"><label>左右 (X)</label><input type="range" id="posXSlider" min="-2.0" max="2.0" step="0.05" value="0"></div>
+        <div class="control-group"><label>上下 (Y)</label><input type="range" id="posYSlider" min="-2.0" max="2.0" step="0.05" value="0"></div>
+        <div class="control-group"><label>遠近 (Z)</label><input type="range" id="posZSlider" min="-5.0" max="-0.3" step="0.05" value="-1.0"></div>
         
-        <p style="margin:0; font-size: 9px; color: #999;">スライダーで相手の手のひらに位置を合わせてください</p>
+        <div class="btn-container">
+            <button id="shutterBtn">📷 写真を保存</button>
+        </div>
     </div>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false" renderer="preserveDrawingBuffer: true;">
         <a-entity camera>
             <a-image id="arImage" position="0 0 -1" visible="false"></a-image>
-            
             <a-entity id="arModel" position="0 0 -1" scale="0.5 0.5 0.5" gltf-model="" visible="false"></a-entity>
-            
             <a-circle id="arShadow" position="0 -0.3 -1" rotation="-90 0 0" radius="0.3" 
                       material="shader: flat; color: black; transparent: true; opacity: 0.3; blending: multiply;" visible="false">
             </a-circle>
@@ -63,6 +65,9 @@
 
     <script>
         (function() {
+            const ui = document.getElementById('ui');
+            const toggleBtn = document.getElementById('toggleBtn');
+            const shutterBtn = document.getElementById('shutterBtn');
             const fileInput = document.getElementById('imageSelector');
             const arImage = document.getElementById('arImage');
             const arModel = document.getElementById('arModel');
@@ -70,12 +75,32 @@
             
             const sizeSlider = document.getElementById('sizeSlider');
             const posXSlider = document.getElementById('posXSlider');
-            const posYSlider = document.getElementById('posYSlider'); // 追加
+            const posYSlider = document.getElementById('posYSlider');
             const posZSlider = document.getElementById('posZSlider');
 
             let currentAspect = 1.0;
             let is3D = false;
 
+            // --- パネルの格納機能 ---
+            toggleBtn.addEventListener('click', () => {
+                ui.classList.toggle('hidden');
+                toggleBtn.innerText = ui.classList.contains('hidden') ? '設定を開く' : 'パネルを隠す';
+            });
+
+            // --- 写真保存機能 ---
+            shutterBtn.addEventListener('click', () => {
+                const scene = document.querySelector('a-scene');
+                // AR.jsの仕様上、canvasから画像を抽出します
+                const canvas = scene.components.screenshot.getCanvas('perspective');
+                
+                // カメラ映像とARオブジェクトを合成した状態で保存するためのリンク作成
+                const link = document.createElement('a');
+                link.download = 'AR_Dragon_Photo.png';
+                link.href = scene.canvas.toDataURL('image/png');
+                link.click();
+            });
+
+            // --- 以下、位置・サイズ調整ロジック ---
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -88,7 +113,6 @@
                         arImage.setAttribute('visible', false);
                         arModel.setAttribute('gltf-model', dataUrl);
                         arModel.setAttribute('visible', true);
-                        currentAspect = 1.0; 
                     } else {
                         is3D = false;
                         arModel.setAttribute('visible', false);
@@ -114,25 +138,21 @@
             function updateAll() {
                 const s = parseFloat(sizeSlider.value);
                 const x = parseFloat(posXSlider.value);
-                const y = parseFloat(posYSlider.value); // 追加
+                const y = parseFloat(posYSlider.value);
                 const z = parseFloat(posZSlider.value);
 
-                // 本体位置の更新
                 const posStr = `${x} ${y} ${z}`;
                 arImage.setAttribute('position', posStr);
                 arModel.setAttribute('position', posStr);
                 
-                // 影の位置（本体の少し下に追従）
-                const shadowY = y - (s * 0.5) - 0.1;
+                const shadowY = y - (s * 0.5) - 0.05;
                 arShadow.setAttribute('position', `${x} ${shadowY} ${z}`);
 
-                // サイズの更新
                 if (is3D) {
                     arModel.setAttribute('scale', `${s} ${s} ${s}`);
                 } else {
                     arImage.setAttribute('scale', `${currentAspect * s} ${s} 1`);
                 }
-                
                 const shadowSize = s * 0.6;
                 arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
             }
@@ -140,5 +160,3 @@
     </script>
 </body>
 </html>
-
-
