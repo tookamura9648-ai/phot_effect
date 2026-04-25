@@ -2,76 +2,87 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR画像・3D召喚プラットフォーム</title>
+    <title>AR手のひら召喚ツール</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; }
         #ui {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: rgba(255, 255, 255, 0.9); padding: 20px;
-            border-radius: 15px; text-align: center; width: 85%;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 12px;
+            border-radius: 15px; text-align: center; width: 92%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
-        .control-group { margin-bottom: 15px; }
-        label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
-        input[type="range"] { width: 100%; cursor: pointer; }
-        input[type="file"] { font-size: 14px; }
+        .control-group { margin-bottom: 8px; }
+        label { display: block; font-size: 10px; color: #444; margin-bottom: 2px; font-weight: bold; }
+        input[type="range"] { width: 100%; cursor: pointer; height: 20px; }
+        .slider-label { display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
     <div id="ui">
         <div class="control-group">
-            <label>1. 画像または3Dモデル(.glb)を選択</label>
-            <input type="file" id="imageSelector" accept="image/*,.glb">
+            <input type="file" id="imageSelector" accept="image/*,.glb" style="font-size: 11px;">
         </div>
         
         <div class="control-group">
-            <label>2. サイズを自由に変える</label>
-            <input type="range" id="sizeSlider" min="0.1" max="3.0" step="0.1" value="0.8">
+            <label>大きさ</label>
+            <input type="range" id="sizeSlider" min="0.05" max="3.0" step="0.05" value="0.5">
         </div>
-        <p style="margin:0; font-size: 11px; color: #888;">スマホを正面に構えて探してください</p>
+
+        <div class="control-group">
+            <label>左右 (横に動かす)</label>
+            <input type="range" id="posXSlider" min="-2.0" max="2.0" step="0.05" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>上下 (高さ調整)</label>
+            <input type="range" id="posYSlider" min="-2.0" max="2.0" step="0.05" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>遠近 (奥行き)</label>
+            <input type="range" id="posZSlider" min="-5.0" max="-0.3" step="0.05" value="-1.0">
+        </div>
+        
+        <p style="margin:0; font-size: 9px; color: #999;">スライダーで相手の手のひらに位置を合わせてください</p>
     </div>
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-        <a-assets id="assets"></a-assets>
-        
         <a-entity camera>
-            <a-image id="arImage" position="0 0 -1.5" visible="false"></a-image>
+            <a-image id="arImage" position="0 0 -1" visible="false"></a-image>
             
-            <a-entity id="arModel" position="0 -0.3 -1.5" scale="0.5 0.5 0.5" gltf-model="" visible="false"></a-entity>
+            <a-entity id="arModel" position="0 0 -1" scale="0.5 0.5 0.5" gltf-model="" visible="false"></a-entity>
             
-            <a-circle id="arShadow" position="0 -0.6 -1.5" rotation="-90 0 0" radius="0.5" 
-                      material="shader: flat; color: black; transparent: true; opacity: 0.4; blending: multiply;" visible="false">
+            <a-circle id="arShadow" position="0 -0.3 -1" rotation="-90 0 0" radius="0.3" 
+                      material="shader: flat; color: black; transparent: true; opacity: 0.3; blending: multiply;" visible="false">
             </a-circle>
         </a-entity>
     </a-scene>
 
     <script>
-        // すべての命令をひとつにまとめました
         (function() {
             const fileInput = document.getElementById('imageSelector');
             const arImage = document.getElementById('arImage');
             const arModel = document.getElementById('arModel');
             const arShadow = document.getElementById('arShadow');
+            
             const sizeSlider = document.getElementById('sizeSlider');
+            const posXSlider = document.getElementById('posXSlider');
+            const posYSlider = document.getElementById('posYSlider'); // 追加
+            const posZSlider = document.getElementById('posZSlider');
 
             let currentAspect = 1.0;
             let is3D = false;
 
-            // ファイルが選択された時の処理
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 const fileName = file.name.toLowerCase();
                 const reader = new FileReader();
-
                 reader.onload = (event) => {
                     const dataUrl = event.target.result;
-
-                    // 拡張子で3D(.glb)か画像かを自動判別
                     if (fileName.endsWith('.glb')) {
                         is3D = true;
                         arImage.setAttribute('visible', false);
@@ -83,41 +94,51 @@
                         arModel.setAttribute('visible', false);
                         arImage.setAttribute('src', dataUrl);
                         arImage.setAttribute('visible', true);
-                        
                         const img = new Image();
                         img.onload = function() {
                             currentAspect = this.width / this.height;
-                            updateScale(); // 縦横比が確定してからサイズ更新
+                            updateAll();
                         };
                         img.src = dataUrl;
                     }
                     arShadow.setAttribute('visible', true);
-                    updateScale();
+                    updateAll();
                 };
                 reader.readAsDataURL(file);
             });
 
-            // スライダーを動かした時の処理
-            sizeSlider.addEventListener('input', updateScale);
+            [sizeSlider, posXSlider, posYSlider, posZSlider].forEach(slider => {
+                slider.addEventListener('input', updateAll);
+            });
 
-            // サイズ更新関数
-            function updateScale() {
-                const baseSize = parseFloat(sizeSlider.value);
+            function updateAll() {
+                const s = parseFloat(sizeSlider.value);
+                const x = parseFloat(posXSlider.value);
+                const y = parseFloat(posYSlider.value); // 追加
+                const z = parseFloat(posZSlider.value);
+
+                // 本体位置の更新
+                const posStr = `${x} ${y} ${z}`;
+                arImage.setAttribute('position', posStr);
+                arModel.setAttribute('position', posStr);
                 
+                // 影の位置（本体の少し下に追従）
+                const shadowY = y - (s * 0.5) - 0.1;
+                arShadow.setAttribute('position', `${x} ${shadowY} ${z}`);
+
+                // サイズの更新
                 if (is3D) {
-                    // 3Dモデルは縦横奥行すべて同じ倍率
-                    arModel.setAttribute('scale', `${baseSize} ${baseSize} ${baseSize}`);
+                    arModel.setAttribute('scale', `${s} ${s} ${s}`);
                 } else {
-                    // 画像はアスペクト比を維持
-                    arImage.setAttribute('scale', `${currentAspect * baseSize} ${baseSize} 1`);
+                    arImage.setAttribute('scale', `${currentAspect * s} ${s} 1`);
                 }
                 
-                // 影のサイズも本体に合わせて調整（0.8倍くらいが自然）
-                const shadowSize = baseSize * 0.8;
+                const shadowSize = s * 0.6;
                 arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
             }
         })();
     </script>
 </body>
 </html>
+
 
