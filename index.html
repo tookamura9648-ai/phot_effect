@@ -2,34 +2,26 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR撮影・手のひら召喚ツール</title>
+    <title>AR撮影・手のひら召喚ツール（修正版）</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        
-        /* 操作パネル */
         #ui {
             position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 15px;
             border-top-left-radius: 20px; border-top-right-radius: 20px;
             width: 90%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
-            transition: transform 0.3s ease-out; /* スライドのアニメーション */
+            transition: transform 0.3s ease-out;
         }
-        /* パネルが隠れている時の状態 */
         #ui.hidden { transform: translateX(-50%) translateY(90%); }
-
         .control-group { margin-bottom: 8px; }
         label { display: block; font-size: 10px; color: #444; margin-bottom: 2px; font-weight: bold; }
         input[type="range"] { width: 100%; cursor: pointer; height: 20px; }
-
-        /* ボタン類 */
         .btn-container { display: flex; justify-content: space-around; margin-top: 10px; gap: 10px; }
-        button {
-            padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; flex: 1;
-        }
-        #shutterBtn { background: #ff4757; color: white; } /* 撮影ボタン */
-        #toggleBtn { background: #2f3542; color: white; }  /* 格納ボタン */
+        button { padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; flex: 1; }
+        #shutterBtn { background: #ff4757; color: white; }
+        #toggleBtn { background: #2f3542; color: white; }
     </style>
 </head>
 <body style="margin: 0; overflow: hidden;">
@@ -38,22 +30,23 @@
         <div style="text-align: right;">
             <button id="toggleBtn" style="width: auto; padding: 5px 15px; font-size: 10px;">パネルを隠す / 出す</button>
         </div>
-
         <div class="control-group">
             <input type="file" id="imageSelector" accept="image/*,.glb" style="font-size: 11px;">
         </div>
-        
         <div class="control-group"><label>大きさ</label><input type="range" id="sizeSlider" min="0.05" max="3.0" step="0.05" value="0.5"></div>
         <div class="control-group"><label>左右 (X)</label><input type="range" id="posXSlider" min="-2.0" max="2.0" step="0.05" value="0"></div>
         <div class="control-group"><label>上下 (Y)</label><input type="range" id="posYSlider" min="-2.0" max="2.0" step="0.05" value="0"></div>
         <div class="control-group"><label>遠近 (Z)</label><input type="range" id="posZSlider" min="-5.0" max="-0.3" step="0.05" value="-1.0"></div>
-        
         <div class="btn-container">
             <button id="shutterBtn">📷 写真を保存</button>
         </div>
     </div>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false" renderer="preserveDrawingBuffer: true;">
+    <a-scene embedded 
+             arjs="sourceType: webcam; debugUIEnabled: false;" 
+             vr-mode-ui="enabled: false" 
+             renderer="antialias: true; alpha: true; preserveDrawingBuffer: true; logarithmicDepthBuffer: true;">
+        
         <a-entity camera>
             <a-image id="arImage" position="0 0 -1" visible="false"></a-image>
             <a-entity id="arModel" position="0 0 -1" scale="0.5 0.5 0.5" gltf-model="" visible="false"></a-entity>
@@ -81,26 +74,27 @@
             let currentAspect = 1.0;
             let is3D = false;
 
-            // --- パネルの格納機能 ---
             toggleBtn.addEventListener('click', () => {
                 ui.classList.toggle('hidden');
                 toggleBtn.innerText = ui.classList.contains('hidden') ? '設定を開く' : 'パネルを隠す';
             });
 
-            // --- 写真保存機能 ---
+            // --- 修正版：写真保存機能 ---
             shutterBtn.addEventListener('click', () => {
                 const scene = document.querySelector('a-scene');
-                // AR.jsの仕様上、canvasから画像を抽出します
-                const canvas = scene.components.screenshot.getCanvas('perspective');
                 
-                // カメラ映像とARオブジェクトを合成した状態で保存するためのリンク作成
+                // 描画が完了したタイミングでキャンバスを取得
+                const canvas = scene.canvas;
+                const dataURL = canvas.toDataURL('image/png');
+                
                 const link = document.createElement('a');
-                link.download = 'AR_Dragon_Photo.png';
-                link.href = scene.canvas.toDataURL('image/png');
+                const now = new Date();
+                const timeStr = now.getHours() + "" + now.getMinutes() + "" + now.getSeconds();
+                link.download = 'AR_Photo_' + timeStr + '.png';
+                link.href = dataURL;
                 link.click();
             });
 
-            // --- 以下、位置・サイズ調整ロジック ---
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
