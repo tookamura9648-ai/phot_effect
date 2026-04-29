@@ -2,24 +2,24 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR撮影・手のひら召喚ツール（修正版）</title>
+    <title>AR手のひら召喚・最終形態</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; }
         #ui {
             position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 15px;
+            z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 12px;
             border-top-left-radius: 20px; border-top-right-radius: 20px;
-            width: 90%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            width: 92%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
             transition: transform 0.3s ease-out;
         }
-        #ui.hidden { transform: translateX(-50%) translateY(90%); }
-        .control-group { margin-bottom: 8px; }
+        #ui.hidden { transform: translateX(-50%) translateY(92%); }
+        .control-group { margin-bottom: 6px; }
         label { display: block; font-size: 10px; color: #444; margin-bottom: 2px; font-weight: bold; }
-        input[type="range"] { width: 100%; cursor: pointer; height: 20px; }
-        .btn-container { display: flex; justify-content: space-around; margin-top: 10px; gap: 10px; }
-        button { padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; flex: 1; }
+        input[type="range"] { width: 100%; cursor: pointer; height: 18px; }
+        .btn-container { display: flex; justify-content: space-around; margin-top: 8px; gap: 8px; }
+        button { padding: 8px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; flex: 1; font-size: 12px; }
         #shutterBtn { background: #ff4757; color: white; }
         #toggleBtn { background: #2f3542; color: white; }
     </style>
@@ -28,25 +28,30 @@
 
     <div id="ui">
         <div style="text-align: right;">
-            <button id="toggleBtn" style="width: auto; padding: 5px 15px; font-size: 10px;">パネルを隠す / 出す</button>
+            <button id="toggleBtn" style="width: auto; padding: 4px 12px; font-size: 10px;">パネル表示切替</button>
         </div>
         <div class="control-group">
             <input type="file" id="imageSelector" accept="image/*,.glb" style="font-size: 11px;">
         </div>
+        
         <div class="control-group"><label>大きさ</label><input type="range" id="sizeSlider" min="0.05" max="3.0" step="0.05" value="0.5"></div>
-        <div class="control-group"><label>左右 (X)</label><input type="range" id="posXSlider" min="-2.0" max="2.0" step="0.05" value="0"></div>
-        <div class="control-group"><label>上下 (Y)</label><input type="range" id="posYSlider" min="-2.0" max="2.0" step="0.05" value="0"></div>
+        <div class="control-group"><label>左右/上下</label>
+            <input type="range" id="posXSlider" min="-2.0" max="2.0" step="0.05" value="0">
+            <input type="range" id="posYSlider" min="-2.0" max="2.0" step="0.05" value="0">
+        </div>
         <div class="control-group"><label>遠近 (Z)</label><input type="range" id="posZSlider" min="-5.0" max="-0.3" step="0.05" value="-1.0"></div>
+        
+        <div class="control-group">
+            <label>傾き・回転 (R)</label>
+            <input type="range" id="rotSlider" min="0" max="360" step="1" value="0">
+        </div>
+
         <div class="btn-container">
-            <button id="shutterBtn">📷 写真を保存</button>
+            <button id="shutterBtn">📷 保存（またはスクショ）</button>
         </div>
     </div>
 
-    <a-scene embedded 
-             arjs="sourceType: webcam; debugUIEnabled: false;" 
-             vr-mode-ui="enabled: false" 
-             renderer="antialias: true; alpha: true; preserveDrawingBuffer: true; logarithmicDepthBuffer: true;">
-        
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false" renderer="preserveDrawingBuffer: true;">
         <a-entity camera>
             <a-image id="arImage" position="0 0 -1" visible="false"></a-image>
             <a-entity id="arModel" position="0 0 -1" scale="0.5 0.5 0.5" gltf-model="" visible="false"></a-entity>
@@ -58,65 +63,38 @@
 
     <script>
         (function() {
-            const ui = document.getElementById('ui');
-            const toggleBtn = document.getElementById('toggleBtn');
-            const shutterBtn = document.getElementById('shutterBtn');
-            const fileInput = document.getElementById('imageSelector');
-            const arImage = document.getElementById('arImage');
-            const arModel = document.getElementById('arModel');
-            const arShadow = document.getElementById('arShadow');
-            
-            const sizeSlider = document.getElementById('sizeSlider');
-            const posXSlider = document.getElementById('posXSlider');
-            const posYSlider = document.getElementById('posYSlider');
-            const posZSlider = document.getElementById('posZSlider');
+            const ui = document.getElementById('ui'), toggleBtn = document.getElementById('toggleBtn'), shutterBtn = document.getElementById('shutterBtn'), fileInput = document.getElementById('imageSelector');
+            const arImage = document.getElementById('arImage'), arModel = document.getElementById('arModel'), arShadow = document.getElementById('arShadow');
+            const sizeSlider = document.getElementById('sizeSlider'), posXSlider = document.getElementById('posXSlider'), posYSlider = document.getElementById('posYSlider'), posZSlider = document.getElementById('posZSlider'), rotSlider = document.getElementById('rotSlider');
 
-            let currentAspect = 1.0;
-            let is3D = false;
+            let currentAspect = 1.0, is3D = false;
 
             toggleBtn.addEventListener('click', () => {
                 ui.classList.toggle('hidden');
                 toggleBtn.innerText = ui.classList.contains('hidden') ? '設定を開く' : 'パネルを隠す';
             });
 
-            // --- 修正版：写真保存機能 ---
             shutterBtn.addEventListener('click', () => {
                 const scene = document.querySelector('a-scene');
-                
-                // 描画が完了したタイミングでキャンバスを取得
-                const canvas = scene.canvas;
-                const dataURL = canvas.toDataURL('image/png');
-                
+                scene.renderer.render(scene.object3D, scene.camera);
                 const link = document.createElement('a');
-                const now = new Date();
-                const timeStr = now.getHours() + "" + now.getMinutes() + "" + now.getSeconds();
-                link.download = 'AR_Photo_' + timeStr + '.png';
-                link.href = dataURL;
+                link.download = 'AR_Photo_' + Date.now() + '.png';
+                link.href = scene.canvas.toDataURL('image/png');
                 link.click();
             });
 
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                const fileName = file.name.toLowerCase();
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const dataUrl = event.target.result;
-                    if (fileName.endsWith('.glb')) {
-                        is3D = true;
-                        arImage.setAttribute('visible', false);
-                        arModel.setAttribute('gltf-model', dataUrl);
-                        arModel.setAttribute('visible', true);
+                    if (file.name.toLowerCase().endsWith('.glb')) {
+                        is3D = true; arImage.setAttribute('visible', false); arModel.setAttribute('gltf-model', dataUrl); arModel.setAttribute('visible', true);
                     } else {
-                        is3D = false;
-                        arModel.setAttribute('visible', false);
-                        arImage.setAttribute('src', dataUrl);
-                        arImage.setAttribute('visible', true);
+                        is3D = false; arModel.setAttribute('visible', false); arImage.setAttribute('src', dataUrl); arImage.setAttribute('visible', true);
                         const img = new Image();
-                        img.onload = function() {
-                            currentAspect = this.width / this.height;
-                            updateAll();
-                        };
+                        img.onload = function() { currentAspect = this.width / this.height; updateAll(); };
                         img.src = dataUrl;
                     }
                     arShadow.setAttribute('visible', true);
@@ -125,30 +103,28 @@
                 reader.readAsDataURL(file);
             });
 
-            [sizeSlider, posXSlider, posYSlider, posZSlider].forEach(slider => {
+            [sizeSlider, posXSlider, posYSlider, posZSlider, rotSlider].forEach(slider => {
                 slider.addEventListener('input', updateAll);
             });
 
             function updateAll() {
-                const s = parseFloat(sizeSlider.value);
-                const x = parseFloat(posXSlider.value);
-                const y = parseFloat(posYSlider.value);
-                const z = parseFloat(posZSlider.value);
-
+                const s = parseFloat(sizeSlider.value), x = parseFloat(posXSlider.value), y = parseFloat(posYSlider.value), z = parseFloat(posZSlider.value), r = parseFloat(rotSlider.value);
                 const posStr = `${x} ${y} ${z}`;
+
                 arImage.setAttribute('position', posStr);
                 arModel.setAttribute('position', posStr);
                 
-                const shadowY = y - (s * 0.5) - 0.05;
-                arShadow.setAttribute('position', `${x} ${shadowY} ${z}`);
-
                 if (is3D) {
                     arModel.setAttribute('scale', `${s} ${s} ${s}`);
+                    arModel.setAttribute('rotation', `0 ${r} 0`); // 3DモデルはY軸回転（横回転）
                 } else {
                     arImage.setAttribute('scale', `${currentAspect * s} ${s} 1`);
+                    arImage.setAttribute('rotation', `0 0 ${r}`); // 画像はZ軸回転（お面のように回る）
                 }
-                const shadowSize = s * 0.6;
-                arShadow.setAttribute('scale', `${shadowSize} ${shadowSize} 1`);
+                
+                const shadowY = y - (s * 0.5) - 0.05;
+                arShadow.setAttribute('position', `${x} ${shadowY} ${z}`);
+                arShadow.setAttribute('scale', `${s * 0.6} ${s * 0.6} 1`);
             }
         })();
     </script>
