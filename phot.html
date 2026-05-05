@@ -1,58 +1,168 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="utf-8">
-    <title>魔法の合成フォトエディタ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summoner OS - Photo Edition</title>
     <style>
-        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        
-        /* 編集エリア */
-        #container { position: relative; width: 95vw; height: 70vh; margin-top: 10px; border: 2px solid #444; overflow: hidden; display: flex; justify-content: center; align-items: center; background: #000; }
+        /* サイバーパンク・フォント設定 */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        body { 
+            margin: 0; 
+            background: #050505; 
+            color: #00ffcc; 
+            font-family: 'Orbitron', 'Courier New', sans-serif;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 編集エリア（メインモニター風） */
+        #container { 
+            position: relative; 
+            width: 90vw; 
+            height: 55vh; 
+            margin-top: 15px; 
+            border: 1px solid #00ffcc; 
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            background: #000;
+            border-radius: 5px;
+        }
         canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* UIエリア */
-        #ui { width: 100%; background: rgba(255, 255, 255, 0.95); color: #333; padding: 15px; border-radius: 20px 20px 0 0; position: fixed; bottom: 0; box-sizing: border-box; }
-        .control-group { margin-bottom: 10px; }
-        label { font-size: 11px; font-weight: bold; display: block; margin-bottom: 3px; }
-        input[type="range"] { width: 100%; }
+        /* UIエリア（フローティングパネル） */
+        #ui { 
+            width: 92%; 
+            background: rgba(10, 15, 15, 0.9); 
+            color: #00ffcc; 
+            padding: 15px; 
+            border-radius: 15px; 
+            position: fixed; 
+            bottom: 15px; 
+            box-sizing: border-box;
+            border: 1px solid rgba(0, 255, 204, 0.4);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.8);
+        }
+
+        .system-status {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .control-group { margin-bottom: 12px; }
+        label { font-size: 9px; text-transform: uppercase; display: block; margin-bottom: 4px; opacity: 0.8; }
         
-        .file-inputs { display: flex; gap: 10px; margin-bottom: 10px; }
-        .file-inputs div { flex: 1; }
+        /* スライダーの見た目をサイバーに */
+        input[type="range"] { 
+            -webkit-appearance: none;
+            width: 100%; 
+            background: #111; 
+            height: 4px;
+            border: 1px solid #004433;
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #00ffcc;
+            border-radius: 2px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+
+        .file-inputs { display: flex; gap: 8px; margin-bottom: 15px; }
+        .file-inputs div { flex: 1; position: relative; }
         
-        .btn-container { display: flex; gap: 10px; }
-        button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-        #saveBtn { background: #ff4757; color: white; font-size: 16px; }
+        /* ファイル選択ボタンをカッコよく */
+        input[type="file"] {
+            font-size: 10px;
+            color: #00ffcc;
+            width: 100%;
+        }
+
+        #saveBtn { 
+            width: 100%;
+            padding: 12px; 
+            border-radius: 5px; 
+            border: 1px solid #00ffcc; 
+            background: transparent;
+            color: #00ffcc;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold; 
+            font-size: 14px;
+            cursor: pointer; 
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        #saveBtn:hover {
+            background: #00ffcc;
+            color: #000;
+            box-shadow: 0 0 25px #00ffcc;
+        }
+
+        /* 装飾的な四隅の角 */
+        .corner {
+            position: absolute; width: 10px; height: 10px; border: 2px solid #00ffcc;
+        }
+        .top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+        .bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
     </style>
 </head>
 <body>
 
     <div id="container">
+        <div class="corner top-left"></div>
         <canvas id="mainCanvas"></canvas>
+        <div class="corner bottom-right"></div>
     </div>
 
     <div id="ui">
+        <div class="system-status">
+            <span>CORE: ONLINE</span>
+            <span>OS Ver. 2.0_PHOTO</span>
+            <span id="coord">X:00 Y:00</span>
+        </div>
+
         <div class="file-inputs">
             <div>
-                <label>1. 背景写真（あなたの手など）</label>
-                <input type="file" id="bgInput" accept="image/*" style="font-size: 10px;">
+                <label>Target Photo</label>
+                <input type="file" id="bgInput" accept="image/*">
             </div>
             <div>
-                <label>2. 重ねる画像（龍など）</label>
-                <input type="file" id="fgInput" accept="image/*" style="font-size: 10px;">
+                <label>Object Data</label>
+                <input type="file" id="fgInput" accept="image/*">
             </div>
         </div>
 
         <div class="control-group">
-            <label>大きさ・位置・回転</label>
+            <label>Scale / Rotation</label>
             <input type="range" id="sizeSlider" min="0.1" max="2.0" step="0.01" value="0.5">
-            <input type="range" id="posXSlider" min="-0.5" max="1.5" step="0.01" value="0.5">
-            <input type="range" id="posYSlider" min="-0.5" max="1.5" step="0.01" value="0.5">
             <input type="range" id="rotSlider" min="0" max="360" step="1" value="0">
         </div>
 
-        <div class="btn-container">
-            <button id="saveBtn">📷 合成写真を保存してSNSへ！</button>
+        <div class="control-group">
+            <label>Position X / Y</label>
+            <input type="range" id="posXSlider" min="-0.5" max="1.5" step="0.01" value="0.5">
+            <input type="range" id="posYSlider" min="-0.5" max="1.5" step="0.01" value="0.5">
         </div>
+
+        <button id="saveBtn">Execute Save</button>
     </div>
 
     <script>
@@ -60,15 +170,16 @@
         const ctx = canvas.getContext('2d');
         const bgInput = document.getElementById('bgInput');
         const fgInput = document.getElementById('fgInput');
+        const coordDisplay = document.getElementById('coord');
         
         const sliders = ['sizeSlider', 'posXSlider', 'posYSlider', 'rotSlider'].map(id => document.getElementById(id));
 
         let bgImg = null;
         let fgImg = null;
 
-        // 画像読み込み処理
         function handleFile(input, callback) {
             input.onchange = (e) => {
+                if(!e.target.files[0]) return;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
@@ -81,18 +192,31 @@
 
         handleFile(bgInput, (img) => {
             bgImg = img;
-            // 背景のサイズに合わせてキャンバスの解像度を設定
             canvas.width = img.width;
             canvas.height = img.height;
         });
         handleFile(fgInput, (img) => { fgImg = img; });
 
-        sliders.forEach(s => s.oninput = draw);
+        sliders.forEach(s => s.oninput = () => {
+            draw();
+            // 座標表示を更新する演出
+            const px = Math.floor(parseFloat(sliders[1].value) * 100);
+            const py = Math.floor(parseFloat(sliders[2].value) * 100);
+            coordDisplay.innerText = `X:${px} Y:${py}`;
+        });
 
         function draw() {
-            if (!bgImg) return;
+            if (!bgImg) {
+                // 背景がない時はガイドを表示
+                ctx.fillStyle = "#111";
+                ctx.fillRect(0,0,canvas.width, canvas.height);
+                ctx.font = "14px Orbitron";
+                ctx.fillStyle = "#00ffcc";
+                ctx.textAlign = "center";
+                ctx.fillText("WAITING FOR TARGET PHOTO...", canvas.width/2, canvas.height/2);
+                return;
+            }
 
-            // 1. 背景を描画
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(bgImg, 0, 0);
 
@@ -105,23 +229,28 @@
                 const fw = fgImg.width * s;
                 const fh = fgImg.height * s;
 
-                // 2. 重ねる画像を回転・移動して描画
                 ctx.save();
                 ctx.translate(x, y);
                 ctx.rotate(r);
+                // 龍に少し光彩（グロー）を当てる演出
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = "#00ffcc";
                 ctx.drawImage(fgImg, -fw / 2, -fh / 2, fw, fh);
                 ctx.restore();
             }
         }
 
-        // 保存処理（今度は確実に保存されます！）
         document.getElementById('saveBtn').onclick = () => {
-            if (!bgImg) { alert("まずは背景写真を選んでね！"); return; }
+            if (!bgImg) { alert("ERROR: TARGET DATA NOT FOUND."); return; }
             const link = document.createElement('a');
-            link.download = 'Magic_Photo_' + Date.now() + '.png';
+            link.download = 'SUMMON_RESULT_' + Date.now() + '.png';
             link.href = canvas.toDataURL('image/png');
             link.click();
         };
+
+        // 初期描画
+        canvas.width = 800; canvas.height = 600;
+        draw();
     </script>
 </body>
 </html>
