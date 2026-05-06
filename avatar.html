@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summoner OS - Avatar Protocol</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        body { 
+            margin: 0; background: #050505; color: #00ffcc; 
+            font-family: 'Orbitron', sans-serif;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        }
+
+        #canvasContainer {
+            width: 300px; height: 300px; margin-top: 40px;
+            border: 2px solid #00ffcc; box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+            background: #000; border-radius: 10px; position: relative;
+        }
+        canvas { width: 100%; height: 100%; }
+
+        #uiPanel {
+            width: 90%; max-width: 400px; background: rgba(10, 20, 20, 0.9);
+            padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 255, 204, 0.3);
+            margin-top: 30px; margin-bottom: 20px;
+        }
+
+        .control-group { margin-bottom: 20px; }
+        label { display: block; font-size: 10px; letter-spacing: 2px; margin-bottom: 10px; }
+
+        select, input[type="color"] {
+            width: 100%; background: #111; color: #00ffcc; border: 1px solid #00ffcc;
+            padding: 10px; font-family: 'Orbitron'; cursor: pointer;
+        }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        button {
+            padding: 12px; background: transparent; border: 1px solid #00ffcc;
+            color: #00ffcc; font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
+            transition: 0.3s; text-transform: uppercase;
+        }
+        button:hover { background: #00ffcc; color: #000; box-shadow: 0 0 15px #00ffcc; }
+        #downloadBtn { grid-column: span 2; background: #00ffcc; color: #000; }
+    </style>
+</head>
+<body>
+
+    <h1 style="font-size: 18px; margin-top: 30px; letter-spacing: 5px;">AVATAR GEN PROTOCOL</h1>
+
+    <div id="canvasContainer">
+        <canvas id="avatarCanvas" width="500" height="500"></canvas>
+    </div>
+
+    <div id="uiPanel">
+        <div class="control-group">
+            <label>VISOR UNIT (EYES)</label>
+            <select id="eyeSelect">
+                <option value="normal">NORMAL SCANNER</option>
+                <option value="mono">MONO VISOR</option>
+                <option value="triple">TRIPLE SENSOR</option>
+                <option value="glow">CYBER GLOW</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>SIGNAL HAIR (STYLE)</label>
+            <select id="hairSelect">
+                <option value="none">NO SIGNAL</option>
+                <option value="spiky">SPIKY ANTENNA</option>
+                <option value="bob">FIBER BOB</option>
+                <option value="long">LONG FLOW</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>ENERGY COLOR</label>
+            <input type="color" id="colorPicker" value="#00ffcc">
+        </div>
+
+        <div class="btn-grid">
+            <button onclick="randomize()">RANDOMIZE</button>
+            <button onclick="draw()">PREVIEW</button>
+            <button id="downloadBtn" onclick="saveAvatar()">EXPORT AVATAR (.PNG)</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('avatarCanvas');
+        const ctx = canvas.getContext('2d');
+        const eyeSelect = document.getElementById('eyeSelect');
+        const hairSelect = document.getElementById('hairSelect');
+        const colorPicker = document.getElementById('colorPicker');
+
+        function draw() {
+            const color = colorPicker.value;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. 顔のベース (サイバー輪郭)
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 8;
+            ctx.strokeRect(150, 150, 200, 220); // 矩形ベースの顔
+            
+            // 2. 髪の描画
+            ctx.fillStyle = color;
+            const hair = hairSelect.value;
+            if (hair === 'spiky') {
+                ctx.beginPath();
+                ctx.moveTo(150, 150); ctx.lineTo(170, 80); ctx.lineTo(200, 150);
+                ctx.lineTo(250, 50); ctx.lineTo(300, 150); ctx.lineTo(330, 80); ctx.lineTo(350, 150);
+                ctx.fill();
+            } else if (hair === 'bob') {
+                ctx.fillRect(140, 130, 220, 40);
+                ctx.fillRect(140, 130, 30, 150);
+                ctx.fillRect(330, 130, 30, 150);
+            } else if (hair === 'long') {
+                ctx.fillRect(140, 130, 220, 20);
+                ctx.fillRect(140, 130, 20, 300);
+                ctx.fillRect(340, 130, 20, 300);
+            }
+
+            // 3. 目の描画
+            const eyes = eyeSelect.value;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = color;
+            if (eyes === 'normal') {
+                ctx.strokeRect(180, 220, 40, 20);
+                ctx.strokeRect(280, 220, 40, 20);
+            } else if (eyes === 'mono') {
+                ctx.fillRect(170, 220, 160, 25);
+            } else if (eyes === 'triple') {
+                ctx.beginPath();
+                ctx.arc(200, 230, 15, 0, Math.PI*2);
+                ctx.arc(300, 230, 15, 0, Math.PI*2);
+                ctx.arc(250, 200, 10, 0, Math.PI*2);
+                ctx.fill();
+            } else if (eyes === 'glow') {
+                ctx.globalAlpha = 0.5;
+                ctx.fillRect(170, 210, 160, 40);
+                ctx.globalAlpha = 1.0;
+                ctx.strokeRect(170, 210, 160, 40);
+            }
+            ctx.shadowBlur = 0;
+
+            // 口
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(220, 320); ctx.lineTo(280, 320);
+            ctx.stroke();
+        }
+
+        function randomize() {
+            const options = ['normal', 'mono', 'triple', 'glow'];
+            const hairOptions = ['none', 'spiky', 'bob', 'long'];
+            eyeSelect.value = options[Math.floor(Math.random() * options.length)];
+            hairSelect.value = hairOptions[Math.floor(Math.random() * hairOptions.length)];
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+            colorPicker.value = randomColor;
+            draw();
+        }
+
+        function saveAvatar() {
+            const link = document.createElement('a');
+            link.download = 'SUMMONER_AVATAR.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // 初回描画
+        draw();
+    </script>
+</body>
+</html>
+
